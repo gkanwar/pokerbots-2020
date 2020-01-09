@@ -220,28 +220,20 @@ def mcmc_update(order, g):
     done = False
     while not done:
         seeds = np.random.randint(len(g.nodes)-1, size=8)
-        for i in seeds:
-            fwd_key = (g.nodes[i], g.nodes[i+1])
-            bwd_key = (g.nodes[i+1], g.nodes[i])
+        for i in seeds: # we are proposing to swap VALUE i and i+1
+            j1,j2 = order.index(i), order.index(i+1)
+            fwd_key = (g.nodes[j1], g.nodes[j2])
+            bwd_key = (g.nodes[j2], g.nodes[j1])
             # check reorder validity
             if fwd_key in g.edges or bwd_key in g.edges: continue
             # get relative probs of each order (i,i+1) or (i+1,i):
-            # At the time i was drawn, the values order[i:] were available in
-            # order, and at time i+1 was drawn, the values order[i+1:] were
-            # available. We could have drawn in the opposite order, which only
-            # affects the probabilities due to position.
-            vals = list(sorted(order[i:]))
-            inds = vals.index(order[i]), vals.index(order[i+1])
-            fwd_inds = [inds[0], inds[1] if inds[0] > inds[1] else inds[1]-1]
-            bwd_inds = [inds[1], inds[0] if inds[1] > inds[0] else inds[0]-1]
-            fwd_prob = (
-                GEOM_P ** (fwd_inds[0]+1) / (1 - GEOM_P**len(vals)) *
-                GEOM_P ** (fwd_inds[1]+1) / (1 - GEOM_P**(len(vals)-1)))
-            bwd_prob = (
-                GEOM_P ** (bwd_inds[0]+1) / (1 - GEOM_P**len(vals)) *
-                GEOM_P ** (bwd_inds[1]+1) / (1 - GEOM_P**(len(vals)-1)))
+            # The only difference in probability is when the first one of the
+            # pair is assigned. No other orderings change, but we either chose
+            # the earlier or later one, which is dictated by GEOM_P.
+            fwd_prob = GEOM_P
+            bwd_prob = 1-GEOM_P
             if np.random.random() < bwd_prob / (fwd_prob + bwd_prob):
-                order[i], order[i+1] = order[i+1], order[i]
+                order[j1], order[j2] = order[j2], order[j1]
             done = True
             break
             
@@ -265,6 +257,7 @@ def monte_carlo_perms(*, n=100, n_skip=10, n_therm=100):
         order.extend(leaves)
         for l in leaves: g.remove_leaf(l)
         if len(g.nodes) == 0: break
+    print(f'face value order: {order}')
     order = list(map(ALL_RANKS.index, order))
     order = list(map(order.index, range(len(ALL_RANKS)))) # reverse the mapping
     print(f'initial order = {order}')
