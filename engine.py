@@ -15,7 +15,7 @@ import sys
 import os
 
 sys.path.append(os.getcwd())
-from config import *
+import config as cfg
 
 FoldAction = namedtuple('FoldAction', [])
 CallAction = namedtuple('CallAction', [])
@@ -64,9 +64,9 @@ class RoundState(namedtuple('_RoundState', ['button', 'street', 'pips', 'stacks'
         score0 = eval7.evaluate(list(map(PERM.get, self.deck.peek(5) + self.hands[0])))
         score1 = eval7.evaluate(list(map(PERM.get, self.deck.peek(5) + self.hands[1])))
         if score0 > score1:
-            delta = STARTING_STACK - self.stacks[1]
+            delta = cfg.STARTING_STACK - self.stacks[1]
         elif score0 < score1:
-            delta = self.stacks[0] - STARTING_STACK
+            delta = self.stacks[0] - cfg.STARTING_STACK
         else:  # split the pot
             delta = (self.stacks[0] - self.stacks[1]) // 2
         return TerminalState([delta, -delta], self)
@@ -93,7 +93,7 @@ class RoundState(namedtuple('_RoundState', ['button', 'street', 'pips', 'stacks'
         active = self.button % 2
         continue_cost = self.pips[1-active] - self.pips[active]
         max_contribution = min(self.stacks[active], self.stacks[1-active] + continue_cost)
-        min_contribution = min(max_contribution, continue_cost + max(continue_cost, BIG_BLIND))
+        min_contribution = min(max_contribution, continue_cost + max(continue_cost, cfg.BIG_BLIND))
         return (self.pips[active] + min_contribution, self.pips[active] + max_contribution)
 
     def proceed_street(self):
@@ -111,11 +111,11 @@ class RoundState(namedtuple('_RoundState', ['button', 'street', 'pips', 'stacks'
         '''
         active = self.button % 2
         if isinstance(action, FoldAction):
-            delta = self.stacks[0] - STARTING_STACK if active == 0 else STARTING_STACK - self.stacks[1]
+            delta = self.stacks[0] - cfg.STARTING_STACK if active == 0 else cfg.STARTING_STACK - self.stacks[1]
             return TerminalState([delta, -delta], self)
         if isinstance(action, CallAction):
             if self.button == 0:  # sb calls bb
-                return RoundState(1, 0, [BIG_BLIND] * 2, [STARTING_STACK - BIG_BLIND] * 2, self.hands, self.deck, self)
+                return RoundState(1, 0, [cfg.BIG_BLIND] * 2, [cfg.STARTING_STACK - cfg.BIG_BLIND] * 2, self.hands, self.deck, self)
             # both players acted
             new_pips = list(self.pips)
             new_stacks = list(self.stacks)
@@ -146,7 +146,7 @@ class Player():
     def __init__(self, name, path):
         self.name = name
         self.path = path
-        self.game_clock = STARTING_GAME_CLOCK
+        self.game_clock = cfg.STARTING_GAME_CLOCK
         self.bankroll = 0
         self.commands = None
         self.bot_subprocess = None
@@ -174,7 +174,7 @@ class Player():
             try:
                 proc = subprocess.run(self.commands['build'],
                                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                      cwd=self.path, timeout=BUILD_TIMEOUT, check=False)
+                                      cwd=self.path, timeout=cfg.BUILD_TIMEOUT, check=False)
                 self.bytes_queue.put(proc.stdout)
             except subprocess.TimeoutExpired as timeout_expired:
                 print('Timed out waiting for', self.name, 'to build')
@@ -193,7 +193,7 @@ class Player():
                 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 with server_socket:
                     server_socket.bind(('', 0))
-                    server_socket.settimeout(CONNECT_TIMEOUT)
+                    server_socket.settimeout(cfg.CONNECT_TIMEOUT)
                     port = server_socket.getsockname()[1]
                     self.out_file = open(self.name + '.txt', 'wb')
                     proc = subprocess.Popen(self.commands['run'] + [str(port)],
@@ -204,7 +204,7 @@ class Player():
                     server_socket.listen()
                     client_socket, _ = server_socket.accept()
                     with client_socket:
-                        client_socket.settimeout(CONNECT_TIMEOUT)
+                        client_socket.settimeout(cfg.CONNECT_TIMEOUT)
                         sock = client_socket.makefile('rw')
                         self.socketfile = sock
                         print(self.name, 'connected successfully')
@@ -228,7 +228,7 @@ class Player():
             except OSError:
                 print('Could not close socket connection with', self.name)
         try:
-            self.bot_subprocess.wait(timeout=BUILD_TIMEOUT)
+            self.bot_subprocess.wait(timeout=cfg.BUILD_TIMEOUT)
         except subprocess.TimeoutExpired:
             print('Timed out waiting for', self.name, 'to quit')
             self.bot_subprocess.kill()
@@ -250,7 +250,7 @@ class Player():
                 self.socketfile.flush()
                 clause = self.socketfile.readline().strip()
                 end_time = time.perf_counter()
-                if ENFORCE_GAME_CLOCK:
+                if cfg.ENFORCE_GAME_CLOCK:
                     self.game_clock -= end_time - start_time
                 if self.game_clock <= 0.:
                     raise socket.timeout
@@ -293,7 +293,8 @@ class Game():
         PERM = {eval7.Card(values[i % 13] + suits[i // 13]) :
                 eval7.Card(perm[i % 13] + suits[i // 13])
                 for i in range(52)}
-        self.log = ['6.176 MIT Pokerbots - ' + PLAYER_1_NAME + ' vs ' + PLAYER_2_NAME,
+        self.log = ['6.176 MIT Pokerbots - ' + cfg.PLAYER_1_NAME +
+                    ' vs ' + cfg.PLAYER_2_NAME,
                     '---------------------------',
                     ' ' + ' '.join(values) + ' ',
                     '[' + ' '.join(perm) + ']',
@@ -317,8 +318,8 @@ class Game():
         Incorporates RoundState information into the game log and player messages.
         '''
         if round_state.street == 0 and round_state.button == 0:
-            self.log.append('{} posts the blind of {}'.format(players[0].name, SMALL_BLIND))
-            self.log.append('{} posts the blind of {}'.format(players[1].name, BIG_BLIND))
+            self.log.append('{} posts the blind of {}'.format(players[0].name, cfg.SMALL_BLIND))
+            self.log.append('{} posts the blind of {}'.format(players[1].name, cfg.BIG_BLIND))
             self.log.append('{} dealt {}'.format(players[0].name, PCARDS(round_state.hands[0])))
             self.log.append('{} dealt {}'.format(players[1].name, PCARDS(round_state.hands[1])))
             self.player_messages[0] = ['T0.', 'P0', 'H' + CCARDS(round_state.hands[0])]
@@ -326,8 +327,8 @@ class Game():
         elif round_state.street > 0 and round_state.button == 1:
             board = round_state.deck.peek(round_state.street)
             self.log.append(STREET_NAMES[round_state.street - 3] + ' ' + PCARDS(board) +
-                            PVALUE(players[0].name, STARTING_STACK-round_state.stacks[0]) +
-                            PVALUE(players[1].name, STARTING_STACK-round_state.stacks[1]))
+                            PVALUE(players[0].name, cfg.STARTING_STACK-round_state.stacks[0]) +
+                            PVALUE(players[1].name, cfg.STARTING_STACK-round_state.stacks[1]))
             compressed_board = 'B' + CCARDS(board)
             self.player_messages[0].append(compressed_board)
             self.player_messages[1].append(compressed_board)
@@ -374,8 +375,8 @@ class Game():
         deck = eval7.Deck()
         deck.shuffle()
         hands = [deck.deal(2), deck.deal(2)]
-        pips = [SMALL_BLIND, BIG_BLIND]
-        stacks = [STARTING_STACK - SMALL_BLIND, STARTING_STACK - BIG_BLIND]
+        pips = [cfg.SMALL_BLIND, cfg.BIG_BLIND]
+        stacks = [cfg.STARTING_STACK - cfg.SMALL_BLIND, cfg.STARTING_STACK - cfg.BIG_BLIND]
         round_state = RoundState(0, 0, pips, stacks, hands, deck, None)
         while not isinstance(round_state, TerminalState):
             self.log_round_state(players, round_state)
@@ -401,13 +402,13 @@ class Game():
         print()
         print('Starting the Pokerbots engine...')
         players = [
-            Player(PLAYER_1_NAME, PLAYER_1_PATH),
-            Player(PLAYER_2_NAME, PLAYER_2_PATH)
+            Player(cfg.PLAYER_1_NAME, cfg.PLAYER_1_PATH),
+            Player(cfg.PLAYER_2_NAME, cfg.PLAYER_2_PATH)
         ]
         for player in players:
             player.build()
             player.run()
-        for round_num in range(1, NUM_ROUNDS + 1):
+        for round_num in range(1, cfg.NUM_ROUNDS + 1):
             self.log.append('')
             self.log.append('Round #' + str(round_num) + STATUS(players))
             self.run_round(players)
@@ -416,7 +417,7 @@ class Game():
         self.log.append('Final' + STATUS(players))
         for player in players:
             player.stop()
-        name = GAME_LOG_FILENAME + '.txt'
+        name = cfg.GAME_LOG_FILENAME + '.txt'
         print('Writing', name)
         with open(name, 'w') as log_file:
             log_file.write('\n'.join(self.log))
