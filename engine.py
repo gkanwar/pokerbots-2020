@@ -195,19 +195,11 @@ class Player():
                     server_socket.bind(('', 0))
                     server_socket.settimeout(CONNECT_TIMEOUT)
                     port = server_socket.getsockname()[1]
+                    self.out_file = open(self.name + '.txt', 'wb')
                     proc = subprocess.Popen(self.commands['run'] + [str(port)],
-                                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                            stdout=self.out_file, stderr=subprocess.STDOUT,
                                             cwd=self.path)
                     self.bot_subprocess = proc
-                    # function for bot listening
-                    def enqueue_output(out, queue):
-                        try:
-                            for line in out:
-                                queue.put(line)
-                        except ValueError:
-                            pass
-                    # start a separate bot listening thread which dies with the program
-                    Thread(target=enqueue_output, args=(proc.stdout, self.bytes_queue), daemon=True).start()
                     # block until we timeout or the player connects
                     server_socket.listen()
                     client_socket, _ = server_socket.accept()
@@ -235,21 +227,12 @@ class Player():
                 print('Timed out waiting for', self.name, 'to disconnect')
             except OSError:
                 print('Could not close socket connection with', self.name)
-        if self.bot_subprocess is not None:
-            try:
-                outs, _ = self.bot_subprocess.communicate(timeout=CONNECT_TIMEOUT)
-                self.bytes_queue.put(outs)
-            except subprocess.TimeoutExpired:
-                print('Timed out waiting for', self.name, 'to quit')
-                self.bot_subprocess.kill()
-                outs, _ = self.bot_subprocess.communicate()
-                self.bytes_queue.put(outs)
-        with open(self.name + '.txt', 'wb') as log_file:
-            bytes_written = 0
-            for output in self.bytes_queue.queue:
-                bytes_written += log_file.write(output)
-                if bytes_written >= PLAYER_LOG_SIZE_LIMIT:
-                    break
+        try:
+            self.bot_subprocess.wait(timeout=BUILD_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            print('Timed out waiting for', self.name, 'to quit')
+            self.bot_subprocess.kill()
+            self.bot_subprocess.wait()
 
     def query(self, round_state, player_message, game_log):
         '''
