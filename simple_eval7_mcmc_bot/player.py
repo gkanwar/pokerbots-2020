@@ -14,7 +14,7 @@ import time
 import traceback as tb
 import sys
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 ALL_RANKS = list(map(str, range(2, 9+1))) + ['T', 'J', 'Q', 'K', 'A']
 GEOM_P = 0.25
 
@@ -343,7 +343,7 @@ class Player(Bot):
         #street = previous_state.street  # 0, 3, 4, or 5 representing when this round ended
         #my_cards = previous_state.hands[active]  # your cards
         #opp_cards = previous_state.hands[1-active]  # opponent's cards or [] if not revealed
-        start = time.time()
+        print('Game clock: {:.6f}s'.format(game_state.game_clock))
         evi = get_perm_evidence(terminal_state, active)
         if evi is not None:
             partial_order.add_evidence(evi)
@@ -394,33 +394,34 @@ class Player(Bot):
         board = round_state.deck[:street]
         
         # Pre-flop, raise pairs and suited for example
-        PREFLOP_RAISE = 7
+        PREFLOP_PAIR_SUITED_VALUE = 1.0
         if street == 0:
             if my_hand[0][0] == my_hand[1][0] or my_hand[0][1] == my_hand[1][1]:
-                return RaiseAction(PREFLOP_RAISE)
+                mean_hand_val = PREFLOP_PAIR_SUITED_VALUE
             else:
-                return check_fold()
-
+                mean_hand_val = 0.0
         # Post-flop, need to do some sims
-        hand_ensemble = []
-        board_ensemble = []
-        for order in order_ensemble:
-            hand_ensemble.append([order[ALL_RANKS.index(card[0])] + card[1] for card in my_hand])
-            board_ensemble.append([order[ALL_RANKS.index(card[0])] + card[1] for card in board])
-        # simply eval7 each translation
-        TRIPS_UP_VALUE = 1.0
-        PAIR_UP_VALUE = 0.75
-        hand_vals = []
-        for hand, board in zip(hand_ensemble, board_ensemble):
-            code = eval7.evaluate([eval7.Card(s) for s in hand + board])
-            handtype = code >> 24
-            if handtype >= 3: # we have something trips or higher
-                hand_vals.append(TRIPS_UP_VALUE)
-            elif handtype >= 1: # we have something pair or higher
-                hand_vals.append(PAIR_UP_VALUE)
-            else:
-                hand_vals.append(0.0)
-        mean_hand_val = np.mean(hand_vals)
+        else:
+            hand_ensemble = []
+            board_ensemble = []
+            for order in order_ensemble:
+                hand_ensemble.append([order[ALL_RANKS.index(card[0])] + card[1] for card in my_hand])
+                board_ensemble.append([order[ALL_RANKS.index(card[0])] + card[1] for card in board])
+            # simply eval7 each translation
+            TRIPS_UP_VALUE = 1.0
+            PAIR_UP_VALUE = 0.75
+            hand_vals = []
+            for hand, board in zip(hand_ensemble, board_ensemble):
+                code = eval7.evaluate([eval7.Card(s) for s in hand + board])
+                handtype = code >> 24
+                if handtype >= 3: # we have something trips or higher
+                    hand_vals.append(TRIPS_UP_VALUE)
+                elif handtype >= 1: # we have something pair or higher
+                    hand_vals.append(PAIR_UP_VALUE)
+                else:
+                    hand_vals.append(0.0)
+            mean_hand_val = np.mean(hand_vals)
+        
         # bet our value (this is basically bogus)
         # value * (2*x + pot) = x
         # (1 - 2*value) x = value*pot
@@ -433,13 +434,18 @@ class Player(Bot):
         bet = int(pot * mean_hand_val / (1-np.tanh(mean_hand_val)))
         min_raise, max_raise = round_state.raise_bounds()
         my_pip = round_state.pips[active]
+        opp_pip = round_state.pips[1-active]
         call_cost = min_raise - my_pip
         if bet < min_raise:
             return check_fold()
         elif max_raise == 0:
+            soft_assert(CheckAction in legal_actions)
             return CheckAction()
-        else:
+        elif RaiseAction in legal_actions:
             return RaiseAction(min(max_raise, bet + my_pip))
+        else:
+            soft_assert(CallAction in legal_actions)
+            return CallAction()
 
 
 if __name__ == '__main__':
