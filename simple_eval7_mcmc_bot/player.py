@@ -229,16 +229,16 @@ def mcmc_update(order, g):
             if fwd_key in g.edges or bwd_key in g.edges: continue
             # get relative probs of each order (i,i+1) or (i+1,i):
             # The only difference in probability is when the first one of the
-            # pair is assigned. No other orderings change, but we either chose
-            # the earlier or later one, which is dictated by GEOM_P.
-            fwd_prob = GEOM_P
+            # pair is assigned. No other orderings change, but we either choose
+            # immediately or skip with probability (1-GEOM_P), then choose.
+            fwd_prob = 1
             bwd_prob = 1-GEOM_P
             if np.random.random() < bwd_prob / (fwd_prob + bwd_prob):
                 order[j1], order[j2] = order[j2], order[j1]
             done = True
             break
             
-def monte_carlo_perms(*, n=100, n_skip=10, n_therm=100):
+def monte_carlo_perms(*, n=100, n_skip=100, n_therm=1000):
     # Step 1: manipulate graph into DAG
     decycle_g = copy.deepcopy(partial_order)
     while True:
