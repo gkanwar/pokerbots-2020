@@ -6,6 +6,7 @@ from numpy.random import geometric
 from collections import namedtuple
 from threading import Thread
 from queue import Queue
+import matplotlib.pyplot as plt
 import time
 import json
 import subprocess
@@ -408,19 +409,30 @@ class Game():
         for player in players:
             player.build()
             player.run()
+        money = tuple([] for p in players)
         for round_num in range(1, cfg.NUM_ROUNDS + 1):
             self.log.append('')
             self.log.append('Round #' + str(round_num) + STATUS(players))
+            for i,p in enumerate(players[::(-1)**(round_num-1)]):
+                money[i].append(p.bankroll)
             self.run_round(players)
             players = players[::-1]
         self.log.append('')
         self.log.append('Final' + STATUS(players))
+        for i,p in enumerate(players):
+            money[i].append(p.bankroll)
         for player in players:
             player.stop()
         name = cfg.GAME_LOG_FILENAME + '.txt'
         print('Writing', name)
         with open(name, 'w') as log_file:
             log_file.write('\n'.join(self.log))
+
+        # plot money
+        for m,p in zip(money, players):
+            plt.plot(m, label=p.name)
+        plt.legend()
+        plt.gcf().savefig('gamelog.pdf', format='pdf')
 
 
 if __name__ == '__main__':

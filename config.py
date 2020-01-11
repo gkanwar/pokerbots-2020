@@ -1,10 +1,10 @@
 # PARAMETERS TO CONTROL THE BEHAVIOR OF THE GAME ENGINE
 # DO NOT REMOVE OR RENAME THIS FILE
 PLAYER_1_NAME = 'A'
-PLAYER_1_PATH = './simple_eval7_mcmc_bot_submit2'
+PLAYER_1_PATH = './robots/shove_and_latch'
 # NO TRAILING SLASHES ARE ALLOWED IN PATHS
 PLAYER_2_NAME = 'B'
-PLAYER_2_PATH = './simple_eval7_mcmc_bot'
+PLAYER_2_PATH = './robots/simple_balanced_eval7_mcmc_bot_improved'
 # GAME PROGRESS IS RECORDED HERE
 GAME_LOG_FILENAME = 'gamelog'
 # PLAYER_LOG_SIZE_LIMIT IS IN BYTES
