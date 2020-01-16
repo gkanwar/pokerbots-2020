@@ -31,7 +31,7 @@ def plot_game(logfile, out_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--logfile', type=str, help='Path to logfile')
-    parser.add_argument('--output', type=str, help='Output path')
+    parser.add_argument('--logfile', type=str, required=True, help='Path to logfile')
+    parser.add_argument('--output', type=str, required=True, help='Output path')
     args = parser.parse_args()
     plot_game(args.logfile, args.output)
