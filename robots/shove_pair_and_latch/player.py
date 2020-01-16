@@ -8,6 +8,7 @@ from skeleton.bot import Bot
 from skeleton.runner import parse_args, run_bot
 
 import copy
+import eval7
 import numpy as np
 import time
 import traceback as tb
@@ -110,20 +111,27 @@ class Player(Bot):
         #    min_cost = min_raise - my_pip  # the cost of a minimum bet/raise
         #    max_cost = max_raise - my_pip  # the cost of a maximum bet/raise
 
-        # STRATEGY: fold-to-win if possible, otherwise shove
+        def check_fold():
+            if CheckAction in legal_actions: return CheckAction()
+            return FoldAction()
+        
+        # STRATEGY: fold-to-win if possible, shove if pair, otherwise check-fold
         if game_state.bankroll > ceil((NUM_ROUNDS-game_state.round_num) * (SMALL_BLIND + BIG_BLIND)/2):
-            return CheckAction() if CheckAction in legal_actions else FoldAction()
+            return check_fold()
         if len(legal_actions) == 1:
             return legal_actions.pop()()
-
-        # SHOVE
-        if RaiseAction in legal_actions:
-            return RaiseAction(STARTING_STACK)
-        elif CallAction in legal_actions:
-            return CallAction()
+        ev = eval7.evaluate([eval7.Card(s) for s in round_state.hands[active]])
+        handtype = ev >> 24
+        if handtype >= 1: # pair or higher
+            if RaiseAction in legal_actions:
+                return RaiseAction(STARTING_STACK)
+            elif CallAction in legal_actions:
+                return CallAction()
+            else:
+                soft_assert(CheckAction in legal_actions)
+                return CheckAction()
         else:
-            soft_assert(CheckAction in legal_actions)
-            return CheckAction()
+            return check_fold()
 
 
 if __name__ == '__main__':
