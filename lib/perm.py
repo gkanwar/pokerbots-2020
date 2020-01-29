@@ -212,7 +212,7 @@ def mcmc_update(order, g):
     while not done:
         seeds = np.random.randint(len(g.nodes)-1, size=8)
         for i in seeds: # we are proposing to swap VALUE i and i+1
-            j1,j2 = order.index(i), order.index(i+1)
+            j1,j2 = order[i], order[i+1]
             fwd_key = (g.nodes[j1], g.nodes[j2])
             bwd_key = (g.nodes[j2], g.nodes[j1])
             # check reorder validity
@@ -223,8 +223,10 @@ def mcmc_update(order, g):
             # immediately or skip with probability (1-GEOM_P), then choose.
             fwd_prob = 1
             bwd_prob = 1-GEOM_P
-            if np.random.random() < bwd_prob / (fwd_prob + bwd_prob):
-                order[j1], order[j2] = order[j2], order[j1]
+            if j1 < j2 and np.random.random() < bwd_prob:
+                order[i], order[i+1] = order[i+1], order[i]
+            elif j2 < j1 and np.random.random() < fwd_prob:
+                order[i], order[i+1] = order[i+1], order[i]
             done = True
             break
             
@@ -286,3 +288,6 @@ def value_ranking(ensemble):
 ## NOTE: This global ensemble will be refreshed as new evidence comes in. We can
 ## use ensemble statistics to choose actions fairly confidently.
 order_ensemble = monte_carlo_perms()
+print('[...]')
+for order in order_ensemble[-10:]:
+    print(order)
