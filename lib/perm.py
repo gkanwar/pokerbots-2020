@@ -280,7 +280,7 @@ def monte_carlo_perms(*, n=100, n_skip=100, n_therm=1000):
 
 def value_ranking(ensemble):
     ranks = dict((c,0) for c in ALL_RANKS)
-    for order in order_ensemble:
+    for order in ensemble:
         for i, o in enumerate(order):
             ranks[o] += i
     return dict((c,k) for k,c in enumerate(sorted(ranks.keys(), key=lambda x: ranks[x])))
