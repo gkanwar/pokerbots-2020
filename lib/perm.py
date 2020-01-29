@@ -252,7 +252,7 @@ def monte_carlo_perms(*, n=100, n_skip=100, n_therm=1000):
         if len(g.nodes) == 0: break
     print(f'face value order: {order}')
     order = list(map(ALL_RANKS.index, order))
-    order = list(map(order.index, range(len(ALL_RANKS)))) # reverse the mapping
+    #order = list(map(order.index, range(len(ALL_RANKS)))) # reverse the mapping
     print(f'initial order = {order}')
     for i in range(-n_therm, n_skip*n):
         mcmc_update(order, decycle_g)
