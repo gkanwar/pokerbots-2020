@@ -205,32 +205,41 @@ def get_leaves(g):
 # weighted by evidence count), and prior to that we randomly flip edges again
 # inversely weighted by evidence count. This introduces noise, but prevents
 # confidently betting into a mistake.
+N_SEED = 1000
+seeds = np.random.randint(len(ALL_RANKS)-1, size=N_SEED)
+seed_ind = 0
 def mcmc_update(order, g):
     # assumes g is a DAG, and order already satisfies it.
     # Gibbs resample nearest neighbor order, if valid to reorder
-    done = False
-    while not done:
-        seeds = np.random.randint(len(g.nodes)-1, size=8)
-        for i in seeds: # we are proposing to swap VALUE i and i+1
-            j1,j2 = order[i], order[i+1]
-            fwd_key = (g.nodes[j1], g.nodes[j2])
-            bwd_key = (g.nodes[j2], g.nodes[j1])
-            # check reorder validity
-            if fwd_key in g.edges or bwd_key in g.edges: continue
-            # get relative probs of each order (i,i+1) or (i+1,i):
-            # The only difference in probability is when the first one of the
-            # pair is assigned. No other orderings change, but we either choose
-            # immediately or skip with probability (1-GEOM_P), then choose.
-            fwd_prob = 1
-            bwd_prob = 1-GEOM_P
-            if j1 < j2 and np.random.random() < bwd_prob:
+    global seed_ind
+    global seeds
+    while True:
+        i = seeds[seed_ind]
+        seed_ind += 1
+        if seed_ind == N_SEED: # refresh
+            seeds = np.random.randint(len(ALL_RANKS)-1, size=N_SEED)
+            seed_ind = 0
+        j1,j2 = order[i], order[i+1]
+        fwd_key = (g.nodes[j1], g.nodes[j2])
+        bwd_key = (g.nodes[j2], g.nodes[j1])
+        # check reorder validity
+        #if fwd_key in g.edges or bwd_key in g.edges: continue
+        # get relative probs of each order (i,i+1) or (i+1,i):
+        # The only difference in probability is when the first one of the
+        # pair is assigned. No other orderings change, but we either choose
+        # immediately or skip with probability (1-GEOM_P), then choose.
+        fwd_prob = 1
+        bwd_prob = 1-GEOM_P
+        if j1 < j2:
+            if np.random.random() < bwd_prob:
                 order[i], order[i+1] = order[i+1], order[i]
-            elif j2 < j1 and np.random.random() < fwd_prob:
+        else:
+            if np.random.random() < fwd_prob:
                 order[i], order[i+1] = order[i+1], order[i]
-            done = True
-            break
+        break
             
 def monte_carlo_perms(*, n=100, n_skip=100, n_therm=1000):
+    start = time.time()
     # Step 1: manipulate graph into DAG
     decycle_g = copy.deepcopy(partial_order)
     while True:
@@ -254,6 +263,7 @@ def monte_carlo_perms(*, n=100, n_skip=100, n_therm=1000):
     order = list(map(ALL_RANKS.index, order))
     #order = list(map(order.index, range(len(ALL_RANKS)))) # reverse the mapping
     print(f'initial order = {order}')
+    start = time.time()
     for i in range(-n_therm, n_skip*n):
         mcmc_update(order, decycle_g)
         # Need to use MCMC, since direct sampling seems intractable.
@@ -276,6 +286,7 @@ def monte_carlo_perms(*, n=100, n_skip=100, n_therm=1000):
         #     remaining.remove(order[-1])
         #     g.remove_leaf(order[-1])
         # ensemble.append(order)
+    print(f'MCMC time = {time.time() - start}')
     return ensemble
 
 def value_ranking(ensemble):
