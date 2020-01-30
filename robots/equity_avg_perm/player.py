@@ -12,6 +12,7 @@ import numpy as np
 from math import ceil
 
 from perm import *
+from get_preflop_odds import *
 
 # generate list of all hands to use for range calculations
 SUITS = ['s', 'c', 'h', 'd']
@@ -89,6 +90,8 @@ class Player(Bot):
             self.sorted_hands = sorted(self.trans_hands, key=lambda l: self.hand_values[l], reverse=True)
             self.evidence_updated = False
         self.sorted_street = 0
+
+        self.opponent_range = 100
 
     def handle_round_over(self, game_state, terminal_state, active):
         '''
@@ -189,6 +192,11 @@ class Player(Bot):
         if my_pip == 1 and street == 0:
             pot_odds = 0.4
             raise_odds = 0.45
+
+            if opp_pip > my_pip:
+                self.opponent_range *= 0.5
+
+            equity = get_preflop_equity(my_hand_trans_e7, self.opponent_range)
         else:
             pot = 2*my_contribution
             bet = opp_pip - my_pip
@@ -201,7 +209,7 @@ class Player(Bot):
 
             print('pot odds = ', pot_odds, 'raise odds = ', raise_odds)
 
-        equity = eval7.py_hand_vs_range_monte_carlo(my_hand_trans_e7, self.random_hand, board_trans_e7, self.N_MCMC)
+            equity = eval7.py_hand_vs_range_monte_carlo(my_hand_trans_e7, self.random_hand, board_trans_e7, self.N_MCMC)
 
         if equity > raise_odds and opp_contribution < STARTING_STACK:
             raise_size = min(int(opp_pip + RAISE_SIZE*2*opp_contribution), my_pip + my_stack)
