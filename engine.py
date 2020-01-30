@@ -438,6 +438,11 @@ class Game():
         plt.legend()
         plt.gcf().savefig('gamelog.pdf', format='pdf')
 
+        for p in players:
+            if p.bankroll >= 0:
+                return p.name
+        raise RuntimeError("Should not reach here!")
+
 
 if __name__ == '__main__':
     Game().run()

@@ -11,29 +11,18 @@ import eval7
 import numpy as np
 from math import ceil
 
-from opp_stats import *
 from perm import *
 
 # generate list of all hands to use for range calculations
 SUITS = ['s', 'c', 'h', 'd']
 CARDS = [v+s for v in ALL_RANKS for s in SUITS]
 HANDS = [(a,b) for i,a in enumerate(CARDS) for b in CARDS[:i]]
-ALL_HANDS = [(a,b) for a in CARDS for b in CARDS]
-def convert_e7(cards):
-    return [eval7.Card(s) for s in cards]
-HANDS_E7 = {hand: convert_e7(hand) for hand in ALL_HANDS}
 
 # tweak these to adjust our preflop ranking of hands
 # pair = 22, suited = 2 when we have perfect knowledge of card rankings,
 # but with unknown rankings we may want to increase these?
 PREFLOP_PAIR_VALUE = 22 # maybe value pairs more since card ranking is unknown?
 PREFLOP_SUITED_VALUE = 2
-
-def translate_hands(value_ranks, hands):
-    trans_hands = []
-    for hand in hands:
-        trans_hands.append(tuple([ALL_RANKS[value_ranks[c[0]]]+c[1] for c in hand]))
-    return trans_hands
 
 class Player(Bot):
     '''
@@ -52,10 +41,12 @@ class Player(Bot):
         '''
         # store preflop hand rankings and hands (sorted),
         # updating as new evidence comes in
-        self.hand_values = dict((hand, 0) for hand in HANDS)
-        self.sorted_hands = []
-        self.value_ranks = value_ranking(order_ensemble)
-        self.trans_hands = translate_hands(self.value_ranks, HANDS)
+        self.hand_values = [dict((hand, 0) for hand in HANDS) for order in order_ensemble]
+        self.sorted_hands = [[] for order in order_ensemble]
+        self.value_ranks_ensemble = []
+        for order in order_ensemble:
+            self.value_ranks_ensemble.append({c: order.index(c) for c in ALL_RANKS})
+        #self.value_ranks = value_ranking(order_ensemble)
         self.evidence_updated = True
 
     def handle_new_round(self, game_state, round_state, active):
@@ -78,16 +69,16 @@ class Player(Bot):
         print('New round #{}'.format(game_state.round_num))
         if self.evidence_updated:
             # update preflop hand rankings with new evidence
-            for hand in self.trans_hands:
-                #values = [self.value_ranks[c[0]] for c in hand]
-                values = [ALL_RANKS.index(c[0]) for c in hand]
-                self.hand_values[hand] = (2*max(values) + min(values)
-                                        + (PREFLOP_PAIR_VALUE if values[0] == values[1] else 0)
-                                        + (PREFLOP_SUITED_VALUE if hand[0][1] == hand[1][1] else 0))
-            self.sorted_hands = sorted(self.trans_hands, key=lambda l: self.hand_values[l], reverse=True)
+            for i,value_ranks in enumerate(self.value_ranks_ensemble):
+                for hand in HANDS:
+                    values = [value_ranks[c[0]] for c in hand]
+                    self.hand_values[i][hand] = (2*max(values) + min(values)
+                                                 + (PREFLOP_PAIR_VALUE if values[0] == values[1] else 0)
+                                                 + (PREFLOP_SUITED_VALUE if hand[0][1] == hand[1][1] else 0))
+                self.sorted_hands[i] = sorted(HANDS, key=lambda l: self.hand_values[i][l], reverse=True)
             self.evidence_updated = False
-        self.sorted_street = 0
-        self.range = self.sorted_hands
+        self.sorted_street = [0 for order in order_ensemble]
+        self.range = self.sorted_hands[:]
 
     def handle_round_over(self, game_state, terminal_state, active):
         '''
@@ -113,13 +104,15 @@ class Player(Bot):
             print('New partial order:', partial_order)
             print('Refreshing ensemble...')
             global order_ensemble
-            order_ensemble = monte_carlo_perms() # refresh ensemble
+            order_ensemble = monte_carlo_perms(n=10) # refresh ensemble
             print('[...]')
             for order in order_ensemble[-10:]:
                 print(order)
+            self.value_ranks_ensemble = []
+            for order in order_ensemble:
+                self.value_ranks_ensemble.append({c: order.index(c) for c in ALL_RANKS})
 
-            self.value_ranks = value_ranking(order_ensemble)
-            self.trans_hands = translate_hands(self.value_ranks, HANDS)
+            #self.value_ranks = value_ranking(order_ensemble)
             self.evidence_updated = True
             
  
@@ -169,7 +162,6 @@ class Player(Bot):
 
         # reorder cards for consistent key in dict
         my_hand = my_hand[::-1] if CARDS.index(my_hand[0]) < CARDS.index(my_hand[1]) else my_hand
-        my_hand_trans = [ALL_RANKS[self.value_ranks[c[0]]]+c[1] for c in my_hand]
 
         # raise fraction / sizes
         # these are parameters to be tweaked (maybe by stats on opponent)
@@ -198,98 +190,73 @@ class Player(Bot):
 
         bluff_range = mdf ### TEMP: other bots don't seem to fold too much so let's just not bluff for now. let's try changing this later
 
-        # re-sort range based on board texture
-        #start = time.time()
-        if street > 0 and street != self.sorted_street:
-            hand_values = {}
+        # compute all three actions
+        raise_size = min(int(opp_pip + RAISE_SIZE*2*opp_contribution), my_pip + my_stack)
+        action_options = [
+            RaiseAction(raise_size),
+            CallAction(),
+            CheckAction(),
+            FoldAction()
+        ]
+        action_votes = [0, 0, 0, 0]
+        
+        for i,value_ranks in enumerate(self.value_ranks_ensemble):
+            # re-sort range based on board texture
+            if street > 0 and street != self.sorted_street[i]:
+                hand_values = {}
 
-            #startB = time.time()
-            trans_board = [ALL_RANKS[self.value_ranks[c[0]]]+c[1] for c in board]
-            trans_board_e7 = convert_e7(trans_board)
-            #print(f'Runtime B {time.time() - startB}')
-            #startC = time.time()
-            new_range = []
-            trans_time = 0
-            eval7_time = 0
-            to_e7_time = 0
-            hand_val_time = 0
-            for trans_hand in self.range:
-                #start_to_e7 = time.time()
-                trans_hand_e7 = HANDS_E7[trans_hand]
-                #to_e7_time += time.time() - start_to_e7
-                if not trans_hand[0] in trans_board and not trans_hand[1] in trans_board:
-                    #start_trans = time.time()
-                    #trans_hand = [ALL_RANKS[self.value_ranks[c[0]]]+c[1] for c in hand]
-                    #trans_time += time.time()-start_trans
-                    #start_eval7 = time.time()
-                    value = eval7.evaluate(trans_hand_e7 + trans_board_e7)
-                    # don't value straights at all
-                    if (value >> 24) == 4:
-                        # remove single cards so we only have pair/2p/trips ranking left
-                        counts = np.unique([x[0] for x in list(trans_hand) + trans_board], return_counts=True)
-                        duplicates = [counts[0][i] for i in range(len(counts[0])) if counts[1][i] > 1]
+                trans_board = [ALL_RANKS[value_ranks[c[0]]]+c[1] for c in board]
+                new_range = []
+                for hand in self.range[i]:
+                    if not hand[0] in board and not hand[1] in board:
+                        trans_hand = [ALL_RANKS[value_ranks[c[0]]]+c[1] for c in hand]
+                        value = eval7.evaluate([eval7.Card(s) for s in trans_hand + trans_board])
+                        hand_values[hand] = value
+                        new_range += [hand]
 
-                        # new value based on just duplicate cards
-                        value = eval7.evaluate([eval7.Card(s) for s in list(trans_hand) + trans_board if s[0] in duplicates])
-                    #eval7_time += time.time()-start_eval7
+                self.range[i] = sorted(new_range, key=lambda l: hand_values[l], reverse=True)
+                self.sorted_street[i] = street
 
-                    #start_hand_val = time.time()
-                    hand_values[trans_hand] = value
+                # print('====================')
+                # print('Ranks:', value_ranks)
+                # print(my_hand, board)
+                # print([ALL_RANKS[value_ranks[c[0]]]+c[1] for c in my_hand], [ALL_RANKS[value_ranks[c[0]]]+c[1] for c in board], '(translated)')
+                # print('Top 20 hands in range:', [(h, hand_values[h]) for h in self.range[:20]])
+                # print('Range: ', self.range)
 
-                    new_range += [trans_hand]
-                    #hand_val_time += time.time()-start_hand_val
-            #print(f'Runtime C {time.time() - startC} (trans {trans_time}) (eval7 {eval7_time+to_e7_time}) (hand val {hand_val_time})')
-            #startD = time.time()
+            # rank current hand in our range
+            N = len(self.range[i])
+            hand_position = self.range[i].index(tuple(my_hand)) / N
 
-            self.range = sorted(new_range, key=lambda l: hand_values[l], reverse=True)
-            self.sorted_street = street
-            #print(f'Runtime D {time.time() - startD}')
+            #print('Hand %:', hand_position, my_hand, [ALL_RANKS[value_ranks[c[0]]]+c[1] for c in my_hand], value_ranks)
+            #print(raise_range, '(raise)', mdf, '(defend)', bluff_range, '(bluff)')
 
-            print('====================')
-            print('Ranks:', self.value_ranks)
-            print(my_hand, board)
-            print([ALL_RANKS[self.value_ranks[c[0]]]+c[1] for c in my_hand], [ALL_RANKS[self.value_ranks[c[0]]]+c[1] for c in board], '(translated)')
-            # print('Top 20 hands in range:', [(h, hand_values[h]) for h in self.range[:20]])
-            # print('Range: ', self.range)
-        #print(f'Runtime A {time.time() - start}')
+            # determine whether hand is a raise/call/bluff-raise/check/fold
 
-        # rank current hand in our range
-        N = len(self.range)
-        hand_position = self.range.index(tuple(my_hand_trans)) / N
-
-        print('Hand %:', hand_position, my_hand, [ALL_RANKS[self.value_ranks[c[0]]]+c[1] for c in my_hand], self.value_ranks)
-        print(raise_range, '(raise)', mdf, '(defend)', bluff_range, '(bluff)')
-
-        # determine whether hand is a raise/call/bluff-raise/check/fold
-
-        # currently commented out range updates; to be "unexploitable" our ranges should be
-        # restricted at each decision (otherwise can be overbluffed if we show weakness), but
-        # that results in us overvaluing weak hands.
-        # e.g. if we check flop, we eliminate all ~pair+ holdings
-        #      then on turn if we bet the top 33% of our range, we'll have to start value-betting high card hands
-        # to do it properly we need some "slowplay" range to protect our delayed value hands
-        if (hand_position < raise_range or mdf < hand_position < bluff_range) and opp_contribution < STARTING_STACK:
-            raise_size = min(int(opp_pip + RAISE_SIZE*2*opp_contribution), my_pip + my_stack)
-
-            if street == 0:
-                self.range = self.range[:ceil(N*raise_range)] + self.range[int(N*mdf):int(ceil(N*bluff_range))]
-
-            print('RAISE:', raise_size)
-            return RaiseAction(raise_size)
-        elif hand_position < mdf and opp_pip > my_pip:
-            if street == 0:
-                self.range = (self.range[:int(N*raise_range)] if opp_pip == my_pip+my_stack else []) + self.range[int(N*raise_range):int(ceil(N*mdf))]
-
-            print('CALL')
-            return CallAction()
-        elif my_pip == opp_pip:
-            if street == 0:
-                self.range = self.range[int(N*raise_range):int(ceil(N*mdf))] + self.range[int(N*bluff_range):]
-
-            print('CHECK')
-            return CheckAction()
-        else:
-            return FoldAction()
+            # currently commented out range updates; to be "unexploitable" our ranges should be
+            # restricted at each decision (otherwise can be overbluffed if we show weakness), but
+            # that results in us overvaluing weak hands.
+            # e.g. if we check flop, we eliminate all ~pair+ holdings
+            #      then on turn if we bet the top 33% of our range, we'll have to start value-betting high card hands
+            # to do it properly we need some "slowplay" range to protect our delayed value hands
+            if (hand_position < raise_range or mdf < hand_position < bluff_range) and opp_contribution < STARTING_STACK:
+                if street == 0:
+                    self.range[i] = self.range[i][:ceil(N*raise_range)] + self.range[i][int(N*mdf):int(ceil(N*bluff_range))]
+                action_votes[0] += 1
+            elif hand_position < mdf and opp_pip > my_pip:
+                if street == 0:
+                    self.range[i] = (self.range[i][:int(N*raise_range)] if opp_pip == my_pip+my_stack else []) + self.range[i][int(N*raise_range):int(ceil(N*mdf))]
+                action_votes[1] += 1
+            elif my_pip == opp_pip:
+                if street == 0:
+                    self.range[i] = self.range[i][int(N*raise_range):int(ceil(N*mdf))] + self.range[i][int(N*bluff_range):]
+                action_votes[2] += 1
+            else:
+                action_votes[3] += 1
+        action = action_options[np.argmax(action_votes)]
+        print(f'Action votes raise {action_votes[0]} call {action_votes[1]} check {action_votes[2]} fold {action_votes[3]}')
+        print(f'Action {action}')
+        return action
 
 
 if __name__ == '__main__':
