@@ -17,7 +17,7 @@ hand_fractions = [float(i) for i in data[0].strip().split(',')]
 ######################################################
 
 ######################################################
-#hacky code to build ranges
+#hacky code to build ranges based on hand odds
 #odds from https://www.cardschat.com/poker-starting-hands.php
 data = open('hand_odds_table.txt','r').readlines()
 
@@ -54,10 +54,16 @@ def get_fraction_index(fraction):
 			return i
 	return i
 
+vranges = [-1] * len(vrange_strings)
 #returns eval7 HandRange object
-def get_v_range_str(fraction):
+def get_v_range(fraction):
 	ind = get_fraction_index(fraction)
-	return vrange_strings[ind]
+
+	#check if we haven't make the vrange obect yet
+	if vranges[ind] == -1:
+		vranges[i] = eval7.HandRange(vrange_strings[i])
+
+	return vrange
 
 def get_preflop_equity(hand,fraction):
 	c1 = str(hand[0])
