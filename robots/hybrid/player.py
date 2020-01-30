@@ -14,6 +14,7 @@ from math import ceil
 from opp_stats import *
 from perm import *
 from get_preflop_odds import *
+from opp_stats import *
 
 # generate list of all hands to use for range calculations
 SUITS = ['s', 'c', 'h', 'd']
@@ -29,6 +30,8 @@ HANDS_E7 = {hand: convert_e7(hand) for hand in ALL_HANDS}
 # but with unknown rankings we may want to increase these?
 PREFLOP_PAIR_VALUE = 22 # maybe value pairs more since card ranking is unknown?
 PREFLOP_SUITED_VALUE = 2
+
+opp_stats = OpponentStats()
 
 def translate_hands(value_ranks, hands):
     trans_hands = []
@@ -114,6 +117,8 @@ class Player(Bot):
             self.value_ranks = value_ranking(order_ensemble)
             self.trans_hands = translate_hands(self.value_ranks, HANDS)
             self.evidence_updated = True
+
+        opp_stats.update_stats_full(terminal_state,active)
             
  
     def get_action(self, game_state, round_state, active):
