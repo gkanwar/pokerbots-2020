@@ -56,6 +56,8 @@ for bot in bots:
             if im.argval == 'get_preflop_odds':
                 shutil.copyfile(os.path.join(args.library, 'preflop_odds.txt'),
                                 os.path.join(bot_path, 'preflop_odds.txt'))
+                shutil.copyfile(os.path.join(args.library, 'hand_odds_table.txt'),
+                                os.path.join(bot_path, 'hand_odds_table.txt'))
 
     # zip archive
     if not args.nozip:
