@@ -61,9 +61,9 @@ def get_v_range(fraction):
 
 	#check if we haven't make the vrange obect yet
 	if vranges[ind] == -1:
-		vranges[i] = eval7.HandRange(vrange_strings[i])
+		vranges[ind] = eval7.HandRange(vrange_strings[ind])
 
-	return vrange
+	return vranges[ind]
 
 def get_preflop_equity(hand,fraction):
 	c1 = str(hand[0])
