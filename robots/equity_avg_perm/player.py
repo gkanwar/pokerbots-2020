@@ -172,7 +172,11 @@ class Player(Bot):
         my_hand = my_hand[::-1] if CARDS.index(my_hand[0]) < CARDS.index(my_hand[1]) else my_hand
         my_hand_trans = [ALL_RANKS[self.value_ranks[c[0]]]+c[1] for c in my_hand]
         my_hand_trans_e7 = convert_e7(my_hand_trans)
-        board_trans_e7 = convert_e7(board)
+        trans_board = [ALL_RANKS[self.value_ranks[c[0]]]+c[1] for c in board]
+        board_trans_e7 = convert_e7(trans_board)
+
+        print(my_hand, board)
+        print(my_hand_trans, trans_board, '(translated)')
 
         # raise sizes
         # these are parameters to be tweaked (maybe by stats on opponent)
@@ -207,9 +211,6 @@ class Player(Bot):
             print('CALL')
             return CallAction()
         elif my_pip == opp_pip:
-            if street == 0:
-                self.range = self.range[int(N*raise_range):int(ceil(N*mdf))] + self.range[int(N*bluff_range):]
-
             print('CHECK')
             return CheckAction()
         else:
