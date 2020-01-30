@@ -197,6 +197,7 @@ class Player(Bot):
                 self.opponent_range *= 0.5
 
             equity = get_preflop_equity(my_hand_trans_e7, self.opponent_range)
+            print(f'Preflop equity {equity}')
         else:
             pot = 2*my_contribution
             bet = opp_pip - my_pip
@@ -210,6 +211,9 @@ class Player(Bot):
             print('pot odds = ', pot_odds, 'raise odds = ', raise_odds)
 
             equity = eval7.py_hand_vs_range_monte_carlo(my_hand_trans_e7, self.random_hand, board_trans_e7, self.N_MCMC)
+            adjust_equity = equity * (1.0 - np.tanh(1.0 - self.opponent_range/100))
+            print(f'Postflop equity {equity}, adjusted {adjust_equity}')
+            equity = adjust_equity
 
         if equity > raise_odds and opp_contribution < STARTING_STACK:
             raise_size = min(int(opp_pip + RAISE_SIZE*2*opp_contribution), my_pip + my_stack)
