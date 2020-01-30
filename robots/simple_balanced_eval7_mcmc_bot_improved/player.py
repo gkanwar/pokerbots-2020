@@ -12,6 +12,7 @@ import numpy as np
 from math import ceil
 
 from perm import *
+from get_preflop_odds import get_preflop_equity
 
 # generate list of all hands to use for range calculations
 SUITS = ['s', 'c', 'h', 'd']

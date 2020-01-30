@@ -48,11 +48,14 @@ for bot in bots:
         statements = script.read()
 
     imports = [__ for __ in dis.get_instructions(statements) if 'IMPORT' in __.opname]
-
     for im in imports:
         if im.argval in lib_scripts:
+
             shutil.copyfile(os.path.join(args.library, im.argval+'.py'),
                                 os.path.join(bot_path, im.argval+'.py'))
+            if im.argval == 'get_preflop_odds':
+                shutil.copyfile(os.path.join(args.library, 'preflop_odds.txt'),
+                                os.path.join(bot_path, 'preflop_odds.txt'))
 
     # zip archive
     if not args.nozip:

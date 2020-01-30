@@ -1,7 +1,7 @@
 # PARAMETERS TO CONTROL THE BEHAVIOR OF THE GAME ENGINE
 # DO NOT REMOVE OR RENAME THIS FILE
 PLAYER_1_NAME = 'A'
-PLAYER_1_PATH = './robots/shove_and_latch'
+PLAYER_1_PATH = './robots/simple_balanced_eval7_mcmc_bot_improved'
 # NO TRAILING SLASHES ARE ALLOWED IN PATHS
 PLAYER_2_NAME = 'B'
 PLAYER_2_PATH = './robots/simple_balanced_eval7_mcmc_bot_improved'
