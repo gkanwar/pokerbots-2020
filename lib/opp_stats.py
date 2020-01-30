@@ -1,29 +1,105 @@
 class OpponentStats:
     def __init__(self):
+        self.limp = 0
+        self.fold = 0
+        self.call = 0
+        self.rais = 0
+        self.tbet = 0
+
         self.preflop_rates = {
+            'limp': [0,0],
             'fold': [0,0],
             'call': [0,0],
-            'raise': [0,0]
+            'raise': [0,0],
+            '3bet': [0,0]
         }
         self.last_street = 0
         self.last_action = None
         # TODO: other streets?
-    def reset_round(self):
-        self.last_street = 0
-    def update_stats(self, round_state):
-        street = round_state.street
-        opponent_action = round_state.last_action
-        if street != self.last_street:
-            if street == 3: # just flopped
-                if isinstance(self.last_action, RaiseAction):
-                    self.preflop_rates['raise'][0] += 1
-                elif isinstance(self.last_action, CallAction) or isinstance(self.last_action, CheckAction):
-                    self.preflop_rates['call'][0] += 1
+
+    def update_stats_full(self,terminal_state,active):
+        #parse the streets, keep only the flops
+        r = terminal_state.previous_state
+        street_action = []
+        while True:
+            if r.street == 0:
+                street_action.append([r.street,r.pips,active,r.button])
+            
+            r = r.previous_state
+            if r == None:
+                break
+
+        street_action = street_action[::-1]
+        opp = (active + 1)%2
+
+        #they go first
+        if opp == 0:
+            if len(street_action) == 1:
+                self.preflop_rates['fold'][0] += 1
+                self.preflop_rates['fold'][1] += 1
+
+                self.preflop_rates['limp'][0] += 0
+                self.preflop_rates['limp'][1] += 1
+
+                self.preflop_rates['raise'][0] += 0
+                self.preflop_rates['raise'][1] += 1
+            
+            else:
+                if street_action[1][1][opp] == 2:
+                    self.preflop_rates['fold'][0] += 0
+                    self.preflop_rates['fold'][1] += 1
+
+                    self.preflop_rates['limp'][0] += 1
+                    self.preflop_rates['limp'][1] += 1
+
+                    self.preflop_rates['raise'][0] += 0
+                    self.preflop_rates['raise'][1] += 1
+                
                 else:
-                    raise RuntimeError('Should not reach here with fold')
-                for k in self.preflop_rates:
-                    self.preflop_rates[k][1] += 1
-            else: # TODO: other streets
-                pass
-        self.last_street = street
-        self.last_action = opponent_action
+                    self.preflop_rates['fold'][0] += 0
+                    self.preflop_rates['fold'][1] += 1
+
+                    self.preflop_rates['limp'][0] += 0
+                    self.preflop_rates['limp'][1] += 1
+
+                    self.preflop_rates['raise'][0] += 1
+                    self.preflop_rates['raise'][1] += 1
+
+        #we go first
+        else:
+            #if we fold pre, no info
+            if len(street_action) == 1:
+                return
+
+            if len(street_action) == 2:
+                pip = street_action[1]
+                if pip[opp] == pip[active]:
+                    self.preflop_rates['call'][0] += 1
+                    self.preflop_rates['call'][1] += 1
+
+                    self.preflop_rates['fold'][0] += 0
+                    self.preflop_rates['fold'][1] += 1
+
+                    self.preflop_rates['3bet'][0] += 0
+                    self.preflop_rates['3bet'][1] += 1
+                    
+                else:
+                    self.preflop_rates['call'][0] += 0
+                    self.preflop_rates['call'][1] += 1
+
+                    self.preflop_rates['fold'][0] += 1
+                    self.preflop_rates['fold'][1] += 1
+
+                    self.preflop_rates['3bet'][0] += 0
+                    self.preflop_rates['3bet'][1] += 1
+
+            #they raised us up, more streets of action
+            else:
+                self.preflop_rates['3bet'][0] += 1
+                self.preflop_rates['3bet'][1] += 1
+
+                self.preflop_rates['call'][0] += 0
+                self.preflop_rates['call'][1] += 1
+
+                self.preflop_rates['fold'][0] += 0
+                self.preflop_rates['fold'][1] += 1
