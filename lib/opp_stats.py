@@ -1,10 +1,10 @@
 class OpponentStats:
     def __init__(self):
-        self.limp = 0
-        self.fold = 0
-        self.call = 0
-        self.rais = 0
-        self.tbet = 0
+        self.limp = -1
+        self.fold = -1
+        self.call = -1
+        self.rais = -1
+        self.tbet = -1
 
         self.preflop_rates = {
             'limp': [0,0],
@@ -82,7 +82,7 @@ class OpponentStats:
 
                     self.preflop_rates['3bet'][0] += 0
                     self.preflop_rates['3bet'][1] += 1
-                    
+
                 else:
                     self.preflop_rates['call'][0] += 0
                     self.preflop_rates['call'][1] += 1
@@ -103,3 +103,19 @@ class OpponentStats:
 
                 self.preflop_rates['fold'][0] += 0
                 self.preflop_rates['fold'][1] += 1
+
+
+    if self.preflop_rates['flop'][1] >= 10:
+        self.flop = self.preflop_rates['flop'][0]/self.preflop_rates['flop'][1]
+    
+    if self.preflop_rates['limp'][1] >= 10:
+        self.limp = self.preflop_rates['limp'][0]/self.preflop_rates['limp'][1]
+    
+    if self.preflop_rates['call'][1] >= 10:
+        self.call = self.preflop_rates['call'][0]/self.preflop_rates['call'][1]
+    
+    if self.preflop_rates['raise'][1] >= 10:
+        self.rais = self.preflop_rates['raise'][0]/self.preflop_rates['raise'][1]
+    
+    if self.preflop_rates['3bet'][1] >= 10:
+        self.tbet = self.preflop_rates['3bet'][0]/self.preflop_rates['3bet'][1]
