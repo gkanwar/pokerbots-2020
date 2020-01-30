@@ -189,15 +189,20 @@ class Player(Bot):
             RAISE_SIZE = 0.75 # bet 3/4 pot
 
 
+        if street == 0:
+            equity = get_preflop_equity(my_hand_trans_e7, self.opponent_range)
+            print(f'Preflop equity {equity}')
+        else:
+            equity = eval7.py_hand_vs_range_monte_carlo(my_hand_trans_e7, get_v_range(self.opponent_range), board_trans_e7, self.N_MCMC)
+            print(f'Postflop equity {equity}')
+            
+            
         if my_pip == 1 and street == 0:
             pot_odds = 0.4
             raise_odds = 0.45
 
             if opp_pip > my_pip:
                 self.opponent_range *= 0.5
-
-            equity = get_preflop_equity(my_hand_trans_e7, self.opponent_range)
-            print(f'Preflop equity {equity}')
         else:
             pot = 2*my_contribution
             bet = opp_pip - my_pip
@@ -209,9 +214,6 @@ class Player(Bot):
             raise_odds = raise_amt / (pot + 2*raise_amt)
 
             print('pot odds = ', pot_odds, 'raise odds = ', raise_odds)
-
-            equity = eval7.py_hand_vs_range_monte_carlo(my_hand_trans_e7, get_v_range(self.opponent_range), board_trans_e7, self.N_MCMC)
-            print(f'Postflop equity {equity}')
 
         if equity > raise_odds and opp_contribution < STARTING_STACK:
             raise_size = min(int(opp_pip + RAISE_SIZE*2*opp_contribution), my_pip + my_stack)
