@@ -11,6 +11,7 @@ import eval7
 import numpy as np
 from math import ceil
 
+from opp_stats import *
 from perm import *
 
 # generate list of all hands to use for range calculations

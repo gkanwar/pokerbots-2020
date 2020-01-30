@@ -13,7 +13,7 @@ BIG_BLIND = 2
 SMALL_BLIND = 1
 
 
-class RoundState(namedtuple('_RoundState', ['button', 'street', 'pips', 'stacks', 'hands', 'deck', 'previous_state'])):
+class RoundState(namedtuple('_RoundState', ['button', 'street', 'pips', 'stacks', 'hands', 'deck', 'last_action', 'previous_state'])):
     '''
     Encodes the game tree for one round of poker.
     '''
@@ -56,7 +56,7 @@ class RoundState(namedtuple('_RoundState', ['button', 'street', 'pips', 'stacks'
         if self.street == 5:
             return self.showdown()
         new_street = 3 if self.street == 0 else self.street + 1
-        return RoundState(1, new_street, [0, 0], self.stacks, self.hands, self.deck, self)
+        return RoundState(1, new_street, [0, 0], self.stacks, self.hands, self.deck, self.last_action, self)
 
     def proceed(self, action):
         '''
@@ -68,24 +68,24 @@ class RoundState(namedtuple('_RoundState', ['button', 'street', 'pips', 'stacks'
             return TerminalState([delta, -delta], self)
         if isinstance(action, CallAction):
             if self.button == 0:  # sb calls bb
-                return RoundState(1, 0, [BIG_BLIND] * 2, [STARTING_STACK - BIG_BLIND] * 2, self.hands, self.deck, self)
+                return RoundState(1, 0, [BIG_BLIND] * 2, [STARTING_STACK - BIG_BLIND] * 2, self.hands, self.deck, action, self)
             # both players acted
             new_pips = list(self.pips)
             new_stacks = list(self.stacks)
             contribution = new_pips[1-active] - new_pips[active]
             new_stacks[active] -= contribution
             new_pips[active] += contribution
-            state = RoundState(self.button + 1, self.street, new_pips, new_stacks, self.hands, self.deck, self)
+            state = RoundState(self.button + 1, self.street, new_pips, new_stacks, self.hands, self.deck, action, self)
             return state.proceed_street()
         if isinstance(action, CheckAction):
             if (self.street == 0 and self.button > 0) or self.button > 1:  # both players acted
                 return self.proceed_street()
             # let opponent act
-            return RoundState(self.button + 1, self.street, self.pips, self.stacks, self.hands, self.deck, self)
+            return RoundState(self.button + 1, self.street, self.pips, self.stacks, self.hands, self.deck, action, self)
         # isinstance(action, RaiseAction)
         new_pips = list(self.pips)
         new_stacks = list(self.stacks)
         contribution = action.amount - new_pips[active]
         new_stacks[active] -= contribution
         new_pips[active] += contribution
-        return RoundState(self.button + 1, self.street, new_pips, new_stacks, self.hands, self.deck, self)
+        return RoundState(self.button + 1, self.street, new_pips, new_stacks, self.hands, self.deck, action, self)
