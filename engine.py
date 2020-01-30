@@ -402,6 +402,7 @@ class Game():
         print('/_/  /_/___/ /_/   /_/   \\___/_/\\_\\\\__/_/ /_.__/\\___/\\__/___/')
         print()
         print('Starting the Pokerbots engine...')
+        start = time.time()
         players = [
             Player(cfg.PLAYER_1_NAME, cfg.PLAYER_1_PATH),
             Player(cfg.PLAYER_2_NAME, cfg.PLAYER_2_PATH)
@@ -419,6 +420,9 @@ class Game():
             players = players[::-1]
         self.log.append('')
         self.log.append('Final' + STATUS(players))
+        runtime_str = f'Runtime {time.time()-start:.1f}s'
+        self.log.append(runtime_str)
+        print(runtime_str)
         for i,p in enumerate(players):
             money[i].append(p.bankroll)
         for player in players:
@@ -433,6 +437,11 @@ class Game():
             plt.plot(m, label=p.name)
         plt.legend()
         plt.gcf().savefig('gamelog.pdf', format='pdf')
+
+        for p in players:
+            if p.bankroll >= 0:
+                return p.name
+        raise RuntimeError("Should not reach here!")
 
 
 if __name__ == '__main__':
