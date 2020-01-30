@@ -209,7 +209,7 @@ class Player(Bot):
 
             print('pot odds = ', pot_odds, 'raise odds = ', raise_odds)
 
-            equity = eval7.py_hand_vs_range_monte_carlo(my_hand_trans_e7, self.random_hand, board_trans_e7, self.N_MCMC)
+            equity = eval7.py_hand_vs_range_monte_carlo(my_hand_trans_e7, get_v_range(self.opponent_range), board_trans_e7, self.N_MCMC)
 
         if equity > raise_odds and opp_contribution < STARTING_STACK:
             raise_size = min(int(opp_pip + RAISE_SIZE*2*opp_contribution), my_pip + my_stack)
