@@ -93,7 +93,7 @@ def get_preflop_equity(hand,fraction):
 		except:
 			dict_hand = c2[0] + c1[0] + 'o'
 			eq = hand_dict[dict_hand][ind]
-	return eq
+	return eq / 100
 
 if __name__ == '__main__':
 
