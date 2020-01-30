@@ -1,6 +1,7 @@
 import eval7
 import numpy as np
 
+
 ######################################################
 #load in the preflop equity data
 data = open('preflop_odds.txt','r').readlines()
@@ -40,7 +41,9 @@ hand_odds_order.sort()
 hand_odds_order = hand_odds_order[::-1]
 
 
-vranges = [eval7.HandRange(''.join([hand_odds_order[z][1] + ',' for z in range(i)])[:-1]) for i in range(1,len(hand_odds_order)+1)]
+#vranges = [eval7.HandRange(''.join([hand_odds_order[z][1] + ',' for z in range(i)])[:-1]) for i in range(1,len(hand_odds_order)+1)]
+vrange_strings = [','.join([hand_odds_order[z][1] for z in range(i)]) for i in range(1,len(hand_odds_order)+1)]
+
 ######################################################
 
 
@@ -52,9 +55,9 @@ def get_fraction_index(fraction):
 	return i
 
 #returns eval7 HandRange object
-def get_v_range(fraction):
+def get_v_range_str(fraction):
 	ind = get_fraction_index(fraction)
-	return vranges[ind]
+	return vrange_strings[ind]
 
 def get_preflop_equity(hand,fraction):
 	c1 = str(hand[0])
