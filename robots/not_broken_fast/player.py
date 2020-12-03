@@ -191,7 +191,9 @@ class Player(Bot):
                 raise_range = RAISE_FRACTION
                 mdf = RAISE_FRACTION
             else:
-                mdf = MDF_FACTOR * 2*my_contribution / ((opp_pip - my_pip) + 2*my_contribution)
+                mdf = 2*my_contribution / ((opp_pip - my_pip) + 2*my_contribution)
+                if mdf < 0.8:
+                    mdf *= MDF_FACTOR
                 raise_range = mdf*RAISE_FRACTION
 
             bluff_range = mdf*(1 + (RAISE_SIZE)/(1+2*RAISE_SIZE) * RAISE_FRACTION)

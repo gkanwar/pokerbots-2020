@@ -191,6 +191,13 @@ class Player(Bot):
             else:
                 if opp_pip > my_pip: # range reduction
                     self.opponent_range *= 0.33
+                # adaptive babyyyy
+                if opp_pip == my_pip: # limp
+                    if opp_stats.limp > -1:
+                        self.opponent_range = opp_stats.limp + opp_stats.rais
+                elif opp_pip > my_pip:
+                    if opp_stats.rais > -1:
+                        self.opponent_range = opp_stats.rais
 
                 pot = 2*my_contribution
                 bet = opp_pip - my_pip
@@ -228,8 +235,6 @@ class Player(Bot):
                     equity = get_preflop_equity(hand_trans_e7, self.opponent_range)
                     if equity > self.odds:
                         new_range.append(hand_trans)
-                print(new_range)
-                print(my_hand_trans)
                 assert tuple(my_hand_trans) in new_range
                 self.range = new_range
             
